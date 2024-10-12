@@ -23,8 +23,11 @@ public:
     }
     RawMemory& operator=(RawMemory&& rhs) noexcept {
         if (this != &rhs) {
-            capacity_ = std::exchange(rhs.capacity_, 0);
-            buffer_ = std::exchange(rhs.buffer_, nullptr);
+            capacity_ = std::exchange(rhs.capacity_, 0); 
+            if (buffer_) {
+                Deallocate(buffer_);
+            }
+            buffer_ = std::exchange(rhs.buffer_, nullptr); 
         }
         return *this;
     }
@@ -218,21 +221,15 @@ public:
         if (size_ == Capacity()) {
             RawMemory<T> new_data(size_ == 0 ? 1 : size_ * 2);
             ptr_ = new (new_data + size_) T(std::forward<Args>(args)...);
-            if constexpr (std::is_nothrow_move_constructible_v<T> || !std::is_copy_constructible_v<T>) {
-                try {
+            try {
+                if constexpr (std::is_nothrow_move_constructible_v<T> || !std::is_copy_constructible_v<T>) {
                     std::uninitialized_move_n(begin(), size_, new_data.GetAddress());
-                }catch(...) {
-                    std::destroy_at(new_data.GetAddress() + size_);
-                    throw;
-                }
-                
-            }else {
-                try {
+                }else {
                     std::uninitialized_copy_n(begin(), size_, new_data.GetAddress());
-                }catch(...) {
-                    std::destroy_at(new_data.GetAddress() + size_);
-                    throw;
                 }
+            }catch(...) {
+                std::destroy_at(new_data.GetAddress() + size_);
+                throw;
             }
             std::destroy_n(begin(), size_);
             data_.Swap(new_data);
@@ -248,7 +245,7 @@ public:
     }
 
     void PushBack(T&& value) {
-        EmplaceBack(std::forward<T>(value));
+        EmplaceBack(std::move(value));
     }
 
     iterator Insert(const_iterator pos, const T& value) {
@@ -299,20 +296,15 @@ public:
             if (pos != end()) {
                 T temp(std::forward<Args>(args)...);
                 new (end()) T(std::move(*(end() - 1)));
-                std::move_backward(begin() + position, end() - 1, end());
                 try {
+                    std::move_backward(begin() + position, end() - 1, end());
                     data_[position] = std::move(temp);
                 }catch(...) {
                     std::destroy_at(end());
                     throw;
                 }                
             }else {
-                try {
-                    new (end()) T(std::forward<Args>(args)...);
-                }catch(...) {
-                    std::destroy_at(end());
-                    throw;
-                }
+                new (end()) T(std::forward<Args>(args)...);
             }
         }
         ++size_;
