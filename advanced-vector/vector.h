@@ -37,7 +37,7 @@ public:
     }
 
     T* operator+(size_t offset) noexcept {
-        // Разрешается получать адрес ячейки памяти, следующей за последним элементом массива
+        
         assert(offset <= capacity_);
         return buffer_ + offset;
     }
@@ -73,12 +73,12 @@ public:
     }
 
 private:
-    // Выделяет сырую память под n элементов и возвращает указатель на неё
+    
     static T* Allocate(size_t n) {
         return n != 0 ? static_cast<T*>(operator new(n * sizeof(T))) : nullptr;
     }
 
-    // Освобождает сырую память, выделенную ранее по адресу buf при помощи Allocate
+    
     static void Deallocate(T* buf) noexcept {
         operator delete(buf);
     }
@@ -131,12 +131,11 @@ public:
     Vector& operator=(const Vector& rhs) {
         if (this != &rhs) {
             if (rhs.size_ > data_.Capacity()) {
-                /* Применить copy-and-swap */
+                
                 Vector rhs_copy(rhs);
                 Swap(rhs_copy);
             } else {
-                /* Скопировать элементы из rhs, создав при необходимости новые
-                   или удалив существующие */
+                
                 if (rhs.size_ < size_) {
                     std::copy(rhs.begin(), rhs.end(), begin());
                     std::destroy_n(begin() + rhs.size_, size_ - rhs.size_);
@@ -189,25 +188,6 @@ public:
         }
         size_ = new_size;
     }
-    
-    /*template<typename Type>
-    void PushBack(Type&& value) {
-        //EmplaceBack(std::move(value));
-        if (size_ == Capacity()) {
-            RawMemory<T> new_data(size_ == 0 ? 1 : size_ * 2);
-            new (new_data + size_) T(std::forward<Type>(value));
-            if constexpr (std::is_nothrow_move_constructible_v<T> || !std::is_copy_constructible_v<T>) {
-                std::uninitialized_move_n(begin(), size_, new_data.GetAddress());
-            }else {
-                std::uninitialized_copy_n(begin(), size_, new_data.GetAddress());
-            }
-            std::destroy_n(begin(), size_);
-            data_.Swap(new_data);
-        }else {
-            new (data_ + size_) T(std::forward<Type>(value));
-        }
-        ++size_;
-    }*/
 
     void PopBack() noexcept {
         assert(size_ > 0);
